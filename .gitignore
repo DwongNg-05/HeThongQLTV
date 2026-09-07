@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+.env
+**/database/*.db
+**/database/*.db-*
+**/database/*.sqlite*
+**/keys/
+artifacts/
+node_modules/
