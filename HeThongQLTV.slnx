@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/LibraryChecks/LibraryChecks.csproj" />
+  </Folder>
+  <Project Path="HeThongQLTV/HeThongQLTV.csproj" />
+</Solution>
