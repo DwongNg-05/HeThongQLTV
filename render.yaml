@@ -2,6 +2,7 @@ services:
   - type: web
     name: he-thong-qltv-demo
     runtime: docker
+    branch: master
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .

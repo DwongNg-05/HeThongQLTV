@@ -4,6 +4,7 @@ COPY NuGet.Config ./
 COPY HeThongQLTV/HeThongQLTV.csproj HeThongQLTV/
 RUN dotnet restore HeThongQLTV/HeThongQLTV.csproj
 COPY HeThongQLTV/ HeThongQLTV/
+COPY wwwroot/ HeThongQLTV/wwwroot/
 RUN dotnet publish HeThongQLTV/HeThongQLTV.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
