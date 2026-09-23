@@ -10,3 +10,7 @@ obj/
 **/keys/
 artifacts/
 node_modules/
+.env.local
+
+# Office temporary lock files
+~$*

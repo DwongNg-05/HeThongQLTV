@@ -1,0 +1,88 @@
+// Run against an isolated, freshly seeded demo database.
+const { chromium } = require('C:/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert = require('node:assert/strict');
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  try {
+    const page = await browser.newPage();
+    const base = process.env.BASE_URL || 'http://127.0.0.1:5267';
+    await page.goto(base + '/Account/Login');
+    await page.locator('[name=username]').fill('thuthu');
+    await page.locator('[name=password]').fill('ThuVien@123');
+    await page.getByRole('button', { name: /Đăng nhập/ }).click();
+    await page.waitForURL(base + '/');
+    const stock = async id => {
+      await page.goto(base + '/Books/Details/' + id);
+      return Number((await page.locator('.detail .badge').innerText()).split('/')[0].trim());
+    };
+    const before6 = await stock(6), before5 = await stock(5);
+    const quantity = id => page.locator(`#basket-items tr[data-book-id="${id}"] input[type=number]`);
+    const add = async (id, count) => {
+      await page.locator('#book-picker').selectOption(String(id));
+      await page.locator('#book-quantity').fill(String(count));
+      await page.locator('#add-book').click();
+    };
+    await page.goto(base + '/Loans/Create');
+    assert.equal(await page.locator('#quantity-editor').isVisible(), false);
+    assert.equal(await page.locator('#confirm-loan').isDisabled(), true);
+    await page.locator('#MemberId').selectOption('1');
+    await add(6, 2);
+    await add(5, 1);
+    assert.equal(await page.locator('#basket-items tr').count(), 2);
+    assert.equal(await page.locator('#loan-total').innerText(), '3 / 5 quyển');
+    await quantity(6).fill('1');
+    await add(6, 1);
+    assert.equal(await page.locator('#basket-items tr').count(), 2);
+    assert.equal(await quantity(6).inputValue(), '2');
+    await quantity(6).fill('5');
+    assert.equal(await page.locator('#confirm-loan').isDisabled(), true);
+    assert.match(await page.locator('#basket-error').innerText(), /5 quyển/);
+    await quantity(6).fill('2');
+    await page.locator('#basket-items tr[data-book-id="6"] button').click();
+    assert.equal(await page.locator('#basket-items input[type=hidden]').first().getAttribute('name'), 'Items[0].BookId');
+    await add(6, 2);
+    await add(5, 99);
+    assert.match(await page.locator('#picker-error').innerText(), /trong kho/);
+    await page.locator('#book-picker').selectOption('');
+    assert.equal(await page.locator('#confirm-loan').isEnabled(), true);
+    assert.equal(await page.locator('#book-picker option[value="8"]').isDisabled(), true);
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth), false);
+    await page.setViewportSize({width:1440,height:1100});
+    console.log('PASS picker: hidden quantity, add, merge, edit, delete, reindex, stock and 5-copy limit, mobile width');
+    await page.getByRole('button', { name: 'Xác nhận mượn sách' }).click();
+    await page.waitForURL(base + '/Loans');
+    assert.match(await page.locator('.alert.success').innerText(), /3 quyển sách/);
+    assert.equal(await stock(6), before6 - 2);
+    assert.equal(await stock(5), before5 - 1);
+    console.log('PASS browser: borrow 2 copies plus another title; both stock counts decrease');
+    await page.goto(base + '/Loans');
+    const count = await page.locator('tbody tr').count();
+    await page.goto(base + '/Loans/Create');
+    await page.locator('#MemberId').selectOption('3');
+    await add(6, 1);
+    // Submit a crafted request to bypass disabled out-of-stock options.
+    const token = await page.locator('#loan-create input[name="__RequestVerificationToken"]').inputValue();
+    const fields = { MemberId: '3', 'Items[0].BookId': '6', 'Items[0].Quantity': '1', 'Items[1].BookId': '8', 'Items[1].Quantity': '1', __RequestVerificationToken: token };
+    const rejected = await page.request.post(base + '/Loans/Create', { form: fields });
+    assert.equal(rejected.status(), 200);
+    await page.setContent(await rejected.text());
+    assert.match(await page.locator('.validation').first().innerText(), /không đủ/);
+    assert.equal(await page.locator('#MemberId').inputValue(), '3');
+    const initial = JSON.parse(await page.locator('#initial-loan-items').textContent());
+    assert.deepEqual(initial.map(x=>[x.bookId,x.quantity]), [[6,1],[8,1]]);
+    const tooMany = await page.request.post(base + '/Loans/Create', { form: {...fields, 'Items[0].Quantity': '6', 'Items[1].Quantity': '0'} });
+    assert.match(await tooMany.text(), /5/);
+    await page.goto(base + '/Loans');
+    assert.equal(await page.locator('tbody tr').count(), count);
+    assert.equal(await stock(6), before6 - 2);
+    console.log('PASS browser: insufficient stock rejects whole request and preserves entered values');
+    await page.goto(base + '/Loans');
+    const row = page.locator('tbody tr').filter({ has: page.locator('a[href="/Books/Details/6"]') }).first();
+    page.on('dialog', dialog => dialog.accept());
+    await row.getByRole('button', { name: 'Trả sách', exact: true }).click();
+    await page.waitForURL(base + '/Loans');
+    assert.equal(await stock(6), before6 - 1);
+    console.log('PASS browser: returning one copy restores exactly one available copy');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exit(1); });

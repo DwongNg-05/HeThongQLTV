@@ -26,5 +26,24 @@ public class UsersController(LibraryDb db) : Controller
         if (!string.IsNullOrEmpty(input.Password)) user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, input.Password);
         if (id == 0) db.Users.Add(user); db.SaveChanges(); TempData["Success"] = "Đã lưu tài khoản và phân quyền."; return RedirectToAction("Index");
     }
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult SetActive(int id, bool? active)
+    {
+        if (!ModelState.IsValid || active == null) return BadRequest();
+        var user = db.Users.Find(id);
+        if (user == null) return NotFound();
+        if (!active.Value && id.ToString() == User.FindFirstValue(ClaimTypes.NameIdentifier))
+        {
+            TempData["Error"] = "Không thể tự khóa tài khoản đang sử dụng.";
+            return RedirectToAction(nameof(Index));
+        }
+        user.Active = active.Value;
+        db.SaveChanges();
+        TempData["Success"] = active.Value
+            ? $"Đã mở khóa tài khoản {user.Username}."
+            : $"Đã khóa tài khoản {user.Username}.";
+        return RedirectToAction(nameof(Index));
+    }
     private void Load() => ViewBag.Members = db.Members.OrderBy(m => m.FullName).ToList();
 }

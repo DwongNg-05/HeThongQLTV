@@ -1,0 +1,17 @@
+.loan-picker, .loan-basket { margin-top: 24px; padding: 20px; border: 1px solid var(--line); border-radius: 8px; }
+.loan-picker { background: var(--paper); }
+.loan-picker h2 { margin-bottom: 16px; }
+.loan-quantity-editor { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.loan-quantity-editor > div { flex: 1; }
+.loan-quantity-editor input { max-width: 140px; }
+.loan-quantity-editor small { display: block; margin-top: 6px; }
+.loan-basket-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.loan-basket input[type=number] { width: 90px; }
+#loan-create [hidden] { display: none !important; }
+#loan-create button:disabled { opacity: .5; cursor: not-allowed; }
+#picker-error, #basket-error { margin-top: 12px; }
+@media (max-width: 600px) {
+    .loan-picker, .loan-basket { padding: 12px; }
+    .loan-quantity-editor { align-items: stretch; flex-direction: column; }
+    .loan-basket-heading { align-items: flex-start; flex-direction: column; }
+}

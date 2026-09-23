@@ -1,2 +1,51 @@
-@{ViewData["Title"]="Lập phiếu mượn";}
-<a class="back" href="/Loans">← Danh sách phiếu mượn</a><div class="page-head"><div><h1>Lập phiếu mượn</h1><p>Chọn độc giả và sách. Hệ thống sẽ kiểm tra điều kiện trước khi lập phiếu.</p></div></div><form asp-action="Create" method="post" class="panel form-panel"><div asp-validation-summary="All" class="validation"></div><label>Độc giả *<select name="memberId" required><option value="">Chọn độc giả</option>@foreach(Member m in ViewBag.Members){<option value="@m.Id">DG@(m.Id.ToString("0000")) — @m.FullName</option>}</select></label><label>Sách cần mượn *<select name="bookId" required><option value="">Chọn sách</option>@foreach(Book b in ViewBag.Books){<option value="@b.Id">@b.Title — còn @b.Available bản</option>}</select></label><p class="hint">Thẻ cần còn hiệu lực, không nợ phạt và chưa vượt giới hạn mượn. Sách có hàng đặt trước được ưu tiên theo thứ tự đăng ký.</p><div class="form-actions"><a class="btn" href="/Loans">Hủy bỏ</a><button class="btn primary">Xác nhận mượn sách</button></div></form>
+@model LoanCreateInput
+@{
+    ViewData["Title"] = "Lập phiếu mượn";
+    var books = (List<Book>)ViewBag.Books;
+}
+<a class="back" asp-action="Index">← Danh sách phiếu mượn</a>
+<div class="page-head"><div><h1>Lập phiếu mượn</h1><p>Chọn sách, nhập số lượng và thêm vào danh sách chờ trước khi xác nhận.</p></div></div>
+<link rel="stylesheet" href="~/css/loan-create.css" asp-append-version="true" />
+<form id="loan-create" asp-action="Create" method="post" class="panel form-panel">
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
+    <label asp-for="MemberId">Độc giả *</label>
+    <select asp-for="MemberId" required>
+        <option value="">Chọn độc giả</option>
+        @foreach (Member member in ViewBag.Members)
+        {
+            <option value="@member.Id" data-borrowed="@member.Loans.Count(l => l.ReturnedAt == null)">DG@(member.Id.ToString("0000")) — @member.FullName</option>
+        }
+    </select>
+    <p id="reader-limit" class="hint"></p>
+    <section class="loan-picker" aria-labelledby="picker-title">
+        <h2 id="picker-title">Chọn sách cần mượn</h2>
+        <label for="book-picker">Sách</label>
+        <select id="book-picker">
+            <option value="">Chọn sách cần mượn</option>
+            @foreach (var book in books)
+            {
+                <option value="@book.Id" data-title="@book.Title" data-author="@book.Author" data-stock="@book.Available" disabled="@(book.Available <= 0)">@book.Title — @book.Author — còn @book.Available bản</option>
+            }
+        </select>
+        <div id="quantity-editor" class="loan-quantity-editor" hidden>
+            <div><label for="book-quantity">Số lượng bản cần mượn</label><input id="book-quantity" type="number" min="1" max="5" step="1" value="1" disabled /><small id="book-stock" class="muted"></small></div>
+            <button id="add-book" type="button" class="btn primary">Thêm vào danh sách</button>
+        </div>
+    </section>
+    <p id="picker-error" class="validation" role="alert" hidden></p>
+    <section class="loan-basket" aria-labelledby="basket-title">
+        <div class="loan-basket-heading"><h2 id="basket-title">Sách chờ xác nhận mượn</h2><span id="loan-total" class="badge" aria-live="polite">0 / 5 quyển</span></div>
+        <p id="basket-empty" class="empty">Chưa chọn sách. Hãy chọn sách và thêm vào danh sách ở trên.</p>
+        <div id="basket-table" class="table-wrap" hidden>
+            <table><thead><tr><th>SÁCH</th><th>CÒN TRONG KHO</th><th>SỐ LƯỢNG</th><th>THAO TÁC</th></tr></thead><tbody id="basket-items"></tbody></table>
+        </div>
+        <p id="basket-error" class="validation" role="alert" hidden></p>
+    </section>
+    <p class="hint">Bạn có thể thay đổi số lượng hoặc xóa sách trong khung trên. Tổng số lượng tối đa 5 quyển, đồng thời không vượt tồn kho và hạn mức còn lại của độc giả.</p>
+    <noscript><p class="validation">Vui lòng bật JavaScript để chọn sách và số lượng mượn.</p></noscript>
+    <div class="form-actions"><a class="btn" asp-action="Index">Hủy bỏ</a><button id="confirm-loan" class="btn primary" type="submit" disabled>Xác nhận mượn sách</button></div>
+</form>
+<script id="initial-loan-items" type="application/json">@Json.Serialize(Model.Items.Select(i => new { bookId = i.BookId, quantity = i.Quantity }))</script>
+@section Scripts {
+    <script src="~/js/loan-create.js" asp-append-version="true"></script>
+}

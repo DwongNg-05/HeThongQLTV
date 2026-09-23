@@ -1,0 +1,68 @@
+// Use a freshly seeded, isolated database.
+const { chromium } = require('C:/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert = require('node:assert/strict');
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  try {
+    const page = await browser.newPage();
+    const base = process.env.BASE_URL || 'http://127.0.0.1:5267';
+    await page.goto(base + '/Account/Login');
+    await page.locator('[name=username]').fill('docgia');
+    await page.locator('[name=password]').fill('ThuVien@123');
+    await page.getByRole('button', { name: /Đăng nhập/ }).click();
+    await page.waitForURL(/Books/);
+    await page.goto(base + '/Books/Details/6');
+    const stockBefore = await page.locator('.detail .badge').innerText();
+    await page.getByRole('link', { name: 'Đặt trước sách', exact: true }).click();
+    assert.equal(await page.locator('#book-picker').inputValue(), '6');
+    assert.equal(await page.locator('#quantity-editor').isVisible(), true);
+    assert.equal(await page.locator('#confirm-loan').isDisabled(), true);
+    await page.goto(base + '/Reservations/Create');
+    assert.equal(await page.locator('#quantity-editor').isVisible(), false);
+    const add = async (id, count) => {
+      await page.locator('#book-picker').selectOption(String(id));
+      await page.locator('#book-quantity').fill(String(count));
+      await page.locator('#add-book').click();
+    };
+    const row = id => page.locator(`#basket-items tr[data-book-id="${id}"]`);
+    await add(6, 2); await add(8, 1);
+    assert.equal(await page.locator('#basket-items tr').count(), 2);
+    assert.equal(await page.locator('#loan-total').innerText(), '3 / 5 quyển');
+    await row(6).locator('input[type=number]').fill('1');
+    await add(6, 1);
+    assert.equal(await row(6).locator('input[type=number]').inputValue(), '2');
+    await row(8).getByRole('button').click();
+    await add(8, 1);
+    await row(6).locator('input[type=number]').fill('5');
+    assert.equal(await page.locator('#confirm-loan').isDisabled(), true);
+    await row(6).locator('input[type=number]').fill('2');
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.getByRole('button', { name: 'Xác nhận đặt trước sách' }).click();
+    await page.waitForURL(base + '/Reservations');
+    assert.match(await page.locator('.alert.success').innerText(), /3 quyển/);
+    assert.equal(await page.locator('tbody tr').count(), 2);
+    const two = page.locator('tbody tr').filter({ hasText: 'Sapiens' });
+    assert.match(await two.innerText(), /2 quyển/);
+    console.log('PASS reservation picker: select, quantities, edit, merge, remove, 5-copy limit, mobile and save');
+    await page.goto(base + '/Books/Details/6');
+    assert.equal(await page.locator('.detail .badge').innerText(), stockBefore);
+    await page.goto(base + '/Reservations/Create');
+    await add(6, 1);
+    await page.getByRole('button', { name: 'Xác nhận đặt trước sách' }).click();
+    await page.locator('.validation-summary-errors').waitFor();
+    assert.match(await page.locator('.validation-summary-errors').innerText(), /đã đặt trước/);
+    assert.equal(await row(6).locator('input[type=number]').inputValue(), '1');
+    await page.goto(base + '/Reservations');
+    page.on('dialog', dialog => dialog.accept());
+    await page.locator('tbody tr').filter({ hasText: 'Sapiens' }).getByRole('button').click();
+    await page.waitForURL(base + '/Reservations');
+    assert.match(await page.locator('.alert.success').innerText(), /2 quyển/);
+    const canceled = page.locator('tbody tr').filter({ hasText: 'Sapiens' });
+    assert.match(await canceled.innerText(), /Đã hủy/);
+    assert.equal(await canceled.getByRole('button').count(), 0);
+    await page.getByRole('button', { name: 'Hủy đặt trước' }).click();
+    await page.waitForURL(base + '/Reservations');
+    console.log('PASS stock unchanged, duplicate error preserves basket, cancel removes all waiting copies');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exit(1); });

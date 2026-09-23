@@ -6,6 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 var builder = WebApplication.CreateBuilder(args);
+// Local development secret; environment variables take precedence.
+var localEnv = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".env.local"));
+if (builder.Environment.IsDevelopment() && File.Exists(localEnv) && string.IsNullOrWhiteSpace(builder.Configuration["OPENAI_API_KEY"]))
+{
+    var line = File.ReadLines(localEnv).FirstOrDefault(l => l.StartsWith("OPENAI_API_KEY="));
+    if (line != null) builder.Configuration["OPENAI_API_KEY"] = line[(line.IndexOf('=') + 1)..].Trim().Trim('"', '\'');
+}
+builder.Services.AddHttpClient("OpenAI", c => { c.BaseAddress = new Uri("https://api.openai.com/v1/"); c.Timeout = TimeSpan.FromSeconds(45); });
+builder.Services.AddRateLimiter(o => { o.RejectionStatusCode = 429; o.AddPolicy("chat", context => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous", _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })); });
 builder.Services.AddControllersWithViews(o => { o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true; o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()); });
 builder.Services.AddDbContext<LibraryDb>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Library") ?? "Data Source=database/library.db"));
 builder.Services.AddOptions<LibraryRules>().Bind(builder.Configuration.GetSection("LibraryRules")).Validate(r => r.MaxLoans > 0 && r.LoanDays > 0 && r.LoanDays <= 365 && r.RenewalDays > 0 && r.RenewalDays <= 365 && r.MaxRenewals >= 0 && r.FinePerDay >= 0, "Quy định thư viện không hợp lệ.").ValidateOnStart();
@@ -32,5 +41,6 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler("/Home/Error");
 app.UseStatusCodePagesWithReExecute("/Home/Status", "?code={0}");
 app.UseStaticFiles(); app.UseRouting(); app.UseAuthentication(); app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
 app.Run();

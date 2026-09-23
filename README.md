@@ -25,10 +25,16 @@ Các tài khoản này dùng để demo cục bộ. Production không tự seed 
 
 ## Chức năng
 
+- Chatbot Lá AI dành cho cả Admin, ThuThu và DocGia sau khi đăng nhập.
+
+- Thủ thư/Admin xác nhận đặt trước khi giao sách: tự lập phiếu mượn theo số lượng đang chờ và chuyển sang Đã nhận trong một giao dịch. Có thể hủy yêu cầu đang chờ và xóa lịch sử đã hủy/đã nhận; xóa đặt trước không xóa phiếu mượn.
+
+- Lập phiếu mượn cho nhiều đầu sách, nhập số lượng từng đầu sách. Toàn bộ lần mượn được kiểm tra và lưu trong một giao dịch; không đủ tồn kho thì không lưu phần còn lại. Mỗi bản sách có một bản ghi mượn để trả và tính phạt riêng. Tồn khả dụng = tổng số bản − số bản chưa trả.
+
 - Đăng nhập bằng cookie; mật khẩu băm bằng ASP.NET PasswordHasher; kiểm tra trạng thái và vai trò tài khoản trên mỗi yêu cầu.
 - Admin: toàn bộ nghiệp vụ, tạo tài khoản, đổi vai trò, liên kết thẻ độc giả, đặt lại mật khẩu, khóa/mở tài khoản. Không được tự khóa hoặc hạ quyền chính mình.
 - Thủ thư: CRUD sách/độc giả; tìm kiếm, lọc; mượn, trả, gia hạn, thu phạt; quản lý hàng đặt trước; xem dashboard và xuất CSV.
-- Độc giả: tìm sách, xem chi tiết, đặt trước sách hết bản sẵn có, hủy yêu cầu của mình, xem và gia hạn phiếu của mình.
+- Độc giả: tìm sách, xem chi tiết, đặt trước sách còn sẵn hoặc đã hết bản, hủy yêu cầu của mình, xem và gia hạn phiếu của mình.
 - Lưu lịch sử giao dịch; chặn xóa sách/độc giả đã có dữ liệu liên kết. Các thao tác thay đổi dữ liệu dùng POST và chống CSRF.
 - Dashboard tính dữ liệu thực từ CSDL: tồn kho, số độc giả, đang mượn, quá hạn, biểu đồ 7 ngày, phân bố thể loại. Báo cáo lọc theo ngày mượn, xếp hạng sách và độc giả; CSV UTF-8 có BOM và chống công thức spreadsheet.
 
@@ -56,10 +62,10 @@ tests/              Kiểm thử nghiệp vụ và trình duyệt
 Tài liệu gốc còn một số quy định chưa thống nhất. Bản này chọn rõ:
 
 - Tối đa 5 cuốn đang mượn; thời hạn 14 ngày; gia hạn tối đa 2 lần, mỗi lần 7 ngày; phạt quá hạn 2.000 đồng/ngày. Đổi trong `LibraryRules` của `appsettings.json` hoặc biến môi trường.
-- Chỉ đặt trước khi hết bản sẵn có; FIFO theo thời gian và mã đăng ký. Khi sách được trả, người đứng đầu được ưu tiên mượn; yêu cầu chuyển sang “Đã nhận” trong cùng giao dịch. Có thể hủy hàng chờ; chưa tự hết hạn giữ chỗ.
+- Đặt trước bằng danh sách chọn nhiều đầu sách và số lượng, có thể sửa/xóa trước khi xác nhận; tối đa 5 quyển đang chờ. Danh sách yêu cầu hiển thị số lượng; hủy theo đầu sách và nhận từng phần. Cho phép đặt trước cả sách còn sẵn và sách đã hết bản; FIFO theo thời gian và mã đăng ký. Khi sách được trả, người đứng đầu được ưu tiên mượn; yêu cầu chuyển sang “Đã nhận” trong cùng giao dịch. Có thể hủy hàng chờ; chưa tự hết hạn giữ chỗ.
 - Một phiếu ứng với một bản sách, hỗ trợ trả và gia hạn riêng từng cuốn. Số bản khả dụng được tính bằng tổng kho trừ các phiếu chưa trả; không duy trì bộ đếm tồn kho thứ hai.
 - Tác giả/thể loại/NXB là trường dữ liệu của sách trong phạm vi KT2, chưa có màn hình danh mục riêng. Không triển khai quản lý từng mã bản sách, phạt hỏng/mất hoặc gửi email.
-- AI chatbot/tóm tắt/gợi ý thuộc KT3 trong kế hoạch tài liệu. Bản KT2 cung cấp minh chứng AI hỗ trợ lập trình, không gọi dịch vụ AI và không cần API key.
+- Đã bổ sung chatbot AI cho tra cứu, tóm tắt mô tả và gợi ý sách; xem mục Chatbot Lá AI bên dưới.
 - Các phần còn thiếu của tài liệu (quy trình sao lưu/khôi phục giao diện, thông báo, đăng ký độc giả công khai) không nằm trong luồng demo hiện tại. Tài khoản do Admin tạo; sao lưu SQLite theo hướng dẫn bên dưới.
 
 ## Cấu hình
@@ -87,3 +93,14 @@ Bộ kiểm thử console dùng CSDL SQLite trong bộ nhớ riêng cho từng t
 Kiểm thử trình duyệt: cài Node.js, Microsoft Edge và `playwright` trong môi trường kiểm thử; chạy website rồi chạy `node tests/browser-checks.cjs`. Có thể đặt `PLAYWRIGHT_MODULE` trỏ tới module Playwright và `BASE_URL` để đổi địa chỉ. Script tạo, sửa và xóa một đầu sách kiểm thử; nên chạy trên CSDL demo. Ảnh được lưu trong `docs/screenshots/`.
 
 Xem `docs/TEST-RESULTS.md` cho kết quả thực tế, `docs/KT2-CHECKLIST.md` cho đối chiếu tiêu chí, `docs/DEMO.md` cho kịch bản trình bày. Nhật ký `docs/AI-LOG.md` có phần sinh viên cần tự kiểm tra và điền, không xác nhận thay người học.
+
+## Chatbot Lá AI
+
+Chỉ tài khoản **Độc giả (DocGia)** được sử dụng chatbot. Sau khi đăng nhập bằng tài khoản Độc giả, nhấn **Chat** ở góc dưới bên phải. Admin và Thủ thư không thấy chatbot và bị từ chối khi gọi trực tiếp API chat. Hỗ trợ tìm sách bằng câu tự nhiên, tóm tắt mô tả sách và gợi ý sách cùng thể loại; có ngữ cảnh 8 lượt gần nhất trong trang, liên kết mã sách, phóng to, thu nhỏ và bắt đầu lại. Lịch sử không lưu qua tải lại trang.
+
+- Development tự đọc riêng `OPENAI_API_KEY` từ `.env.local` ở thư mục gốc repo (đã bỏ qua trong Git). Biến môi trường được ưu tiên. Production dùng biến môi trường `OPENAI_API_KEY`.
+- Model mặc định `gpt-4.1-mini`; thay bằng `OpenAI__Model` trong môi trường nếu cần. Khóa chỉ được dùng ở máy chủ.
+- Tích hợp [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text), không lưu response trên API (`store: false`). Câu hỏi, tối đa 8 lượt trước và danh mục sách được gửi để tạo câu trả lời; không gửi dữ liệu độc giả hoặc phiếu mượn.
+- Hiện thư viện chỉ lưu mô tả, chưa có toàn văn. AI được yêu cầu nói rõ giới hạn nguồn; dữ liệu mô tả demo không đủ để tạo bản tóm tắt nội dung đáng tin cậy. Cập nhật mô tả thật trong màn hình sửa sách để có kết quả hữu ích.
+- Phiên bản này gửi tối đa 200 đầu sách làm ngữ cảnh; vượt giới hạn sẽ thông báo dùng danh mục. Yêu cầu đăng nhập, CSRF, tối đa 1.500 ký tự/câu hỏi và 10 yêu cầu/phút/tài khoản.
+- Kiểm thử trình duyệt: `node tests/chat-checks.cjs` (mặc định localhost:5257; đổi bằng BASE_URL). Đặt `CHAT_LIVE_TEST=1` để chạy thêm ba câu hỏi qua API thật, có sử dụng hạn mức API.
