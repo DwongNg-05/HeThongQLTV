@@ -4,6 +4,18 @@ Yêu cầu: Docker Engine hoặc Docker Desktop chạy Linux containers, Docker 
 
 ## Chạy lần đầu
 
+### Bản demo trên Render (chạy trực tiếp Dockerfile)
+
+Ứng dụng tự bật dữ liệu mẫu riêng cho dịch vụ có `RENDER_EXTERNAL_HOSTNAME=hethongqltv.onrender.com` khi chưa đặt `SeedDemo`. Render tự cung cấp [biến hostname này](https://render.com/docs/environment-variables). Các bản Production khác mặc định không seed. Sau khi triển khai commit mới trên dịch vụ demo, đăng nhập bằng `admin`, `thuthu` hoặc `docgia`, mật khẩu `ThuVien@123` (CSDL phải chưa có người dùng).
+
+Nếu Render đã đặt biến `SeedDemo=false` trong Environment, đổi thành `true` hoặc xóa biến rồi triển khai lại vì cấu hình tường minh được ưu tiên. Với dịch vụ hiện có, chọn **Manual Deploy → Deploy latest commit** nếu chưa bật tự động triển khai.
+
+Việc khởi tạo không đặt lại mật khẩu, mở khóa hoặc ghi đè người dùng đã tồn tại. Nếu CSDL đã có người dùng, dùng tài khoản quản trị hiện có để quản lý tài khoản; không xóa dữ liệu để sửa lỗi đăng nhập.
+
+Các tài khoản mẫu có mật khẩu công khai, chỉ dùng cho bản demo. Khi dùng dữ liệu thật, đặt `SeedDemo=false` và dùng tài khoản quản trị riêng. Tắt seed không xóa các tài khoản demo đã tạo. Docker Compose bên dưới đã đặt `SeedDemo=false` nên vẫn dùng tài khoản riêng.
+
+### Docker Compose với tài khoản riêng
+
 ```sh
 git clone https://github.com/DwongNg-05/HeThongQLTV.git
 cd HeThongQLTV

@@ -43,7 +43,10 @@ Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "databas
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LibraryDb>();
-    if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("SeedDemo")) db.Seed(); else db.Database.EnsureCreated();
+    // Only this project's public demo defaults to seeding; an explicit setting wins.
+    var seedDemo = builder.Configuration.GetValue<bool?>("SeedDemo")
+        ?? string.Equals(builder.Configuration["RENDER_EXTERNAL_HOSTNAME"], "hethongqltv.onrender.com", StringComparison.OrdinalIgnoreCase);
+    if (app.Environment.IsDevelopment() || seedDemo) db.Seed(); else db.Database.EnsureCreated();
     AdminBootstrap.Initialize(db, builder.Configuration["BootstrapAdmin:Username"], builder.Configuration["BootstrapAdmin:Password"]);
 }
 app.UseExceptionHandler("/Home/Error");
