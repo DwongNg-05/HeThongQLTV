@@ -6,6 +6,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Identity;
 var passed = 0;
+using (var bootstrapConnection = new SqliteConnection("Data Source=:memory:"))
+{
+    bootstrapConnection.Open();
+    using var db = new LibraryDb(new DbContextOptionsBuilder<LibraryDb>().UseSqlite(bootstrapConnection).Options);
+    db.Database.EnsureCreated();
+    AdminBootstrap.Initialize(db, "admin", null);
+    Assert(!db.Users.Any());
+    Reject(() => AdminBootstrap.Initialize(db, "admin", "short"));
+    Assert(!db.Users.Any());
+    AdminBootstrap.Initialize(db, "owner", "Test-only-password-123!");
+    var owner = db.Users.Single();
+    Assert(owner.Role == "Admin" && owner.Active && owner.Username == "owner");
+    Assert(new PasswordHasher<AppUser>().VerifyHashedPassword(owner, owner.PasswordHash, "Test-only-password-123!") != PasswordVerificationResult.Failed);
+    var hash = owner.PasswordHash;
+    AdminBootstrap.Initialize(db, "another", "Different-password-123!");
+    Assert(db.Users.Count() == 1 && db.Users.Single().PasswordHash == hash);
+    Console.WriteLine("PASS Production admin bootstrap validates, hashes and preserves credentials");
+    passed++;
+}
 void Check(string name, Action<LibraryDb, CirculationService> test) { using var connection = new SqliteConnection("Data Source=:memory:"); connection.Open(); using var db = new LibraryDb(new DbContextOptionsBuilder<LibraryDb>().UseSqlite(connection).Options); db.Seed(); var service = new CirculationService(db, Options.Create(new LibraryRules())); test(db, service); Console.WriteLine("PASS " + name); passed++; }
 void Assert(bool condition, string message = "Assertion failed") { if (!condition) throw new Exception(message); }
 void Reject(Action action) { try { action(); } catch (InvalidOperationException) { return; } throw new Exception("Expected rejection"); }

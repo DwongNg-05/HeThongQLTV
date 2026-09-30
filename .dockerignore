@@ -1,0 +1,17 @@
+**/bin
+**/obj
+**/node_modules
+.git
+.vs
+.codex
+.agents
+.env*
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/keys
+**/*.pfx
+**/*.pem
+artifacts
+tests
+docs

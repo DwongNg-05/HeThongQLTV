@@ -4,6 +4,8 @@ Website thực hiện nghiệp vụ quản lý thư viện theo tài liệu “H
 
 ## Chạy website
 
+**Triển khai Docker:** xem [DOCKER.md](DOCKER.md) để build, chạy bằng Docker Compose, tạo tài khoản quản trị và sao lưu dữ liệu.
+
 Yêu cầu: .NET SDK 10 và kết nối Internet ở lần restore đầu tiên.
 
 ```powershell

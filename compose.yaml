@@ -1,0 +1,29 @@
+name: hethongqltv
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hethongqltv:latest
+    restart: unless-stopped
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Library: Data Source=/app/database/library.db
+      DataProtection__KeysPath: /app/keys
+      SeedDemo: "false"
+      BootstrapAdmin__Username: ${ADMIN_USERNAME:-admin}
+      BootstrapAdmin__Password: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      AllowedHosts: ${ALLOWED_HOSTS:-*}
+    volumes:
+      - library-data:/app/database
+      - library-keys:/app/keys
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  library-data:
+  library-keys:

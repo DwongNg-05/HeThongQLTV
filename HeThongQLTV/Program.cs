@@ -4,8 +4,15 @@ using HeThongQLTV.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 var builder = WebApplication.CreateBuilder(args);
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+{
+    Directory.CreateDirectory(keysPath);
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysPath)).SetApplicationName("HeThongQLTV");
+}
 // Local development secret; environment variables take precedence.
 var localEnv = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".env.local"));
 if (builder.Environment.IsDevelopment() && File.Exists(localEnv) && string.IsNullOrWhiteSpace(builder.Configuration["OPENAI_API_KEY"]))
@@ -37,6 +44,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LibraryDb>();
     if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("SeedDemo")) db.Seed(); else db.Database.EnsureCreated();
+    AdminBootstrap.Initialize(db, builder.Configuration["BootstrapAdmin:Username"], builder.Configuration["BootstrapAdmin:Password"]);
 }
 app.UseExceptionHandler("/Home/Error");
 app.UseStatusCodePagesWithReExecute("/Home/Status", "?code={0}");
